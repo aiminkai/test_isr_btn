@@ -24,13 +24,13 @@ void loop()
 {
   switch (btn_state)
     {
-  case 1:   {
+  case 0:   {
             Serial.print("нажатие");
             Serial.println(btn_state);
             }
    break;
    
-  case 2:  {
+  case 1:  {
             Serial.print("Отжатие ");
             Serial.println(btn_state);  
            }
