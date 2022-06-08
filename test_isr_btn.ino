@@ -2,10 +2,14 @@
 При публичном размещении кода ссылка на первоисточник обязательна.
 */
 
-#define btn_long_push 1000   // Длительность долинного нажатия кнопки
-uint8_t btn_state;
-#define btn1_pin 5
-boolean flag;
+
+#define btn1_pin 3
+boolean flag = false;
+boolean temp_flag = false;
+long btn_press_time = 0;
+long btn_release_time = 0;
+int dbc = 80;
+int dbc2 = 2000;
 
 //********************************
 void setup() 
@@ -13,7 +17,7 @@ void setup()
   pinMode(btn1_pin,INPUT_PULLUP); // BUTTON
 
 
-  PCICR =  0b00000100; // PCICR |= (1<<PCIE1); Включить прерывание PCINT2
+  PCICR =  0b00000100; // Включить прерывание PCINT2
   PCMSK2 = 0b00001000; // Разрешить прерывание для  D3
   
   Serial.begin(9600);
@@ -22,43 +26,27 @@ void setup()
 //****************************************
 void loop() 
 {
- // boolean btn_state = !digitalRead(btn1_pin);
-//  if (!flag && btn_state){
-//    flag=true;
-//    Serial.println("нажатие");
-//  }
-//if (flag && !btn_state){
-//    flag=false;
-//    Serial.println("отжатие");
-//  }
-
-
-  
-//  switch (btn_state)
-//    {
-//  case 0:   {
-//            Serial.print("нажатие ");
-//            Serial.println(btn_state);
-//            }
-//   break;
-//   
-//  case 1:  {
-//            Serial.print("Отжатие ");
-//            Serial.println(btn_state);  
-//           }
-//    break;
-//    
-//
-//    }
- // btn_state=0; //обнуляем статус энкодера
+if (temp_flag!=flag){
+  if (flag==0) Serial.println("release");
+  if (flag==1) Serial.println("press");
+  temp_flag=flag;
+}
 }
 
 //****************************************
-ISR (PCINT2_vect) //Обработчик прерывания от пинов D3
+ISR (PCINT2_vect) //Обработчик прерывания для пина D3
 {
-   btn_state = bitRead(PIND, 4); //считываем состояние кнопки
-  if (btn_state==0){
-     Serial.println("нажатие");
-  }
-
+  
+   boolean btnState = bitRead(PIND, 3); //считываем состояние кнопки
+     
+   if (btnState == 0  && millis()-btn_press_time>dbc) {
+    btn_press_time=millis();
+    flag = true;
+   
+   }
+   if (btnState == 1 && millis()-btn_release_time>dbc) {
+    btn_release_time=millis();
+    flag = false;
+    }
+   
  }
