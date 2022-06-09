@@ -1,122 +1,85 @@
-/*
- Copyright (c) 2014-2015 NicoHood
- See the readme for credit to other people.
+#define ledPin 13      // Пин для светодиода
+#define setLedOnPin 3  // Пин кнопки включения светодиода
+#define setLedOffPin 5 // Пин кнопки выключения светодиода
 
- PinChangeInterrupt_HowItWorks
- Shows how to manually setup a single PCINT function with a few helper functions.
+volatile uint8_t state_3 = 0;
+volatile uint8_t state_5 = 0;
+int state1=1;
+int state2=1;
+long i=0;
+uint8_t oldPIND = 0xFF;
 
- Connect a button/cable to pin 7 and ground.
- The led will change its state if pin 7 changes.
-
- PinChangeInterrupts are different than normal Interrupts.
- See readme for more information.
- Dont use Serial or delay inside interrupts!
- This library is not compatible with SoftSerial.
-
- The following pins are usable for PinChangeInterrupt:
- Arduino Uno/Nano/Mini: All pins are usable
- Arduino Mega: 10, 11, 12, 13, 50, 51, 52, 53, A8 (62), A9 (63), A10 (64),
-               A11 (65), A12 (66), A13 (67), A14 (68), A15 (69)
- Arduino Leonardo/Micro: 8, 9, 10, 11, 14 (MISO), 15 (SCK), 16 (MOSI)
- HoodLoader2: All (broken out 1-7) pins are usable
- Attiny 24/44/84: All pins are usable
- Attiny 25/45/85: All pins are usable
- Attiny 13: All pins are usable
- Attiny 441/841: All pins are usable
- ATmega644P/ATmega1284P: All pins are usable
- */
-
-//================================================================================
-// User Settings
-//================================================================================
-
-// choose a valid PinChangeInterrupt pin of your Arduino board
-#define PCINT_PIN 3
-#define PCINT_MODE CHANGE
-#define PCINT_FUNCTION blinkLed
-boolean state_btn=false;
-
-void setup()
-{
-  Serial.begin(9600);
-  // set pins to input with a pullup, led to output
-  pinMode(PCINT_PIN, INPUT_PULLUP);
-  pinMode(13, OUTPUT);
-
-  // attach the new PinChangeInterrupt
-  attachPinChangeInterrupt();
+void pciSetup(byte pin) {
+  *digitalPinToPCMSK(pin) |= bit (digitalPinToPCMSKbit(pin));  // Разрешаем PCINT для указанного пина
+  PCIFR  |= bit (digitalPinToPCICRbit(pin)); // Очищаем признак запроса прерывания для соответствующей группы пинов
+  PCICR  |= bit (digitalPinToPCICRbit(pin)); // Разрешаем PCINT для соответствующей группы пинов
 }
+
+
+ISR (PCINT2_vect) { // Обработчик запросов прерывания от пинов D0..D7
+
+  state_3=!digitalRead(setLedOnPin);
+
+//  if (state_3)
+//  Serial.println("Press 3 "); 
+//  if (!state_3)
+//  Serial.println("Release 3 "); 
+
+  state_5=!digitalRead(setLedOffPin);
+
+//  if (state_5)
+//  Serial.println("Press 5 "); 
+//  if (!state_5)
+//  Serial.println("Release 5 "); 
+
+}
+
+void setup() {
+  pinMode(ledPin, OUTPUT);
+  pinMode(setLedOnPin,  INPUT_PULLUP); // Подтянем пины-источники PCINT к питанию
+  pinMode(setLedOffPin, INPUT_PULLUP);
+  pciSetup(setLedOnPin); // И разрешим на них прерывания
+  pciSetup(setLedOffPin);
+  Serial.begin(9600);
+}
+
 
 void loop() {
-  // empty
+
+if (state1!=state_3){
+if(state_3)  {
+Serial.println("btn 3 press ");
+}
+if(!state_3)  
+Serial.println("btn 3 release ");
+state1=state_3;
 }
 
-void blinkLed(void) {
-  // switch Led state
-  digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
-  state_btn=!state_btn;
-  //Serial.print("state "); Serial.println(state_btn); 
-  if (state_btn)
-  Serial.println("Press "); 
-  if (!state_btn)
-  Serial.println("Release "); 
+if (state2!=state_5){
+  
+if(state_5)  {
+Serial.println("btn 5 press ");
+ }
+
+
+
+if(!state_5)  {
+Serial.println("btn 5 release ");
+i=0;}
+
+state2=state_5;
 }
 
-//================================================================================
-// PCINT Definitions
-//================================================================================
+if(state_5){
+i++;
 
-#define PCMSK *digitalPinToPCMSK(PCINT_PIN)
-#define PCINT digitalPinToPCMSKbit(PCINT_PIN)
-#define PCIE  digitalPinToPCICRbit(PCINT_PIN)
-#define PCPIN *portInputRegister(digitalPinToPort(PCINT_PIN))
-
-#if (PCIE == 0)
-#define PCINT_vect PCINT0_vect
-#elif (PCIE == 1)
-#define PCINT_vect PCINT1_vect
-#elif (PCIE == 2)
-#define PCINT_vect PCINT2_vect
-#else
-#error This board doesnt support PCINT ?
-#endif
-
-volatile uint8_t oldPort = 0x00;
-
-void attachPinChangeInterrupt(void) {
-  // update the old state to the actual state
-  oldPort = PCPIN;
-
-  // pin change mask registers decide which pins are enabled as triggers
-  PCMSK |= (1 << PCINT);
-
-  // PCICR: Pin Change Interrupt Control Register - enables interrupt vectors
-  PCICR |= (1 << PCIE);
+if (i == 400000)
+{
+  Serial.println("btn 5 press 100 ");
+  i=0;
+}
 }
 
 
-ISR(PCINT_vect) {
-  // get the new and old pin states for port
-  uint8_t newPort = PCPIN;
 
-  // compare with the old value to detect a rising or falling
-  uint8_t change = newPort ^ oldPort;
-
-  // check which pins are triggered, compared with the settings
-  uint8_t trigger = 0x00;
-#if (PCINT_MODE == RISING) || (PCINT_MODE == CHANGE)
-  uint8_t rising = change & newPort;
-  trigger |= (rising & (1 << 03));
-  #endif
-#if (PCINT_MODE == FALLING) || (PCINT_MODE == CHANGE)
-  uint8_t falling = change & oldPort;
-  trigger |= (falling & (1 << 03));
- #endif
-
-  // save the new state for next comparison
-  oldPort = newPort;
-
-  // if our needed pin has changed, call the IRL interrupt function
-  if (trigger & (1 << 03))
-    PCINT_FUNCTION();
 }
