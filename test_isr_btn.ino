@@ -106,17 +106,17 @@ ISR(PCINT_vect) {
   uint8_t trigger = 0x00;
 #if (PCINT_MODE == RISING) || (PCINT_MODE == CHANGE)
   uint8_t rising = change & newPort;
-  trigger |= (rising & (1 << PCINT));
+  trigger |= (rising & (1 << 03));
   #endif
 #if (PCINT_MODE == FALLING) || (PCINT_MODE == CHANGE)
   uint8_t falling = change & oldPort;
-  trigger |= (falling & (1 << PCINT));
+  trigger |= (falling & (1 << 03));
  #endif
 
   // save the new state for next comparison
   oldPort = newPort;
 
   // if our needed pin has changed, call the IRL interrupt function
-  if (trigger & (1 << PCINT))
+  if (trigger & (1 << 03))
     PCINT_FUNCTION();
 }
